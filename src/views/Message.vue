@@ -1,6 +1,10 @@
 <template>
-    <div class="bg-gray-100 w-full flex flex-col">
+    <div class="relative w-full flex flex-col">
         <!-- Message Header -->
+        <div
+            id="backgroundImg"
+            class="absolute top-0 left-0 w-full h-full -z-10 bg-gray-100 bg-contain bg-no-repeat bg-center blur-sm"
+        ></div>
         <div
             class="w-full h-16 flex items-center justify-between bg-white border-b border-gray-300 shadow-md px-5"
         >
@@ -131,4 +135,8 @@ export default {
 };
 </script>
 
-<style></style>
+<style lang="postcss" scoped>
+#backgroundImg {
+    background-image: url("../assets/Pngtree.png");
+}
+</style>

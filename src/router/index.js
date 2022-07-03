@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 import Home from "../views/Home.vue";
 import Message from "../views/Message.vue";
+import Authentication from "../views/auth/Authentication.vue";
 import Login from "../views/auth/Login.vue";
+import Register from "../views/auth/Register.vue";
 
 const routes = [
     {
@@ -17,9 +19,22 @@ const routes = [
         ],
     },
     {
-        path: "/login",
-        name: "login",
-        component: Login,
+        path: "/auth",
+        name: "authentication",
+        component: Authentication,
+        redirect: "/auth/login",
+        children: [
+            {
+                path: "/auth/login",
+                name: "login",
+                component: Login,
+            },
+            {
+                path: "/auth/register",
+                name: "register",
+                component: Register,
+            },
+        ],
     },
     // {
     //   path: '/about',

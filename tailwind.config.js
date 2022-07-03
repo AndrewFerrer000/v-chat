@@ -6,7 +6,18 @@ module.exports = {
             height: {
                 18: "4.5rem",
             },
+            translate: {
+                100: "28rem",
+                106: "32rem",
+                112: "36rem",
+            },
         },
     },
-    plugins: [],
+    plugins: [
+        function ({ addVariant }) {
+            addVariant("child", "& > *");
+            addVariant("child-hover", "& > *:hover");
+            addVariant("child-focus", "& > *:focus");
+        },
+    ],
 };
