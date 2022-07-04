@@ -56,7 +56,7 @@
 </template>
 
 <script>
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { db, auth } from "@/main";
 
@@ -86,11 +86,15 @@ export default {
                         display_name: this.display_name,
                         email: user.user.email,
                         created_At: Timestamp.now(),
+                    }).then(() => {
+                        // always signout the user after registration so they can login their account
+                        signOut(auth);
                     });
 
                     this.email = "";
                     this.password = "";
                     this.display_name = "";
+                    this.$router.replace({ name: "login" });
                 })
                 .catch((err) => {
                     console.log(err);

@@ -4,12 +4,21 @@ import Message from "../views/Message.vue";
 import Authentication from "../views/auth/Authentication.vue";
 import Login from "../views/auth/Login.vue";
 import Register from "../views/auth/Register.vue";
+import { auth } from "@/main";
+import { onAuthStateChanged } from "firebase/auth";
 
 const routes = [
     {
         path: "/",
         name: "home",
         component: Home,
+        beforeEnter: (to, from, next) => {
+            onAuthStateChanged(auth, (user) => {
+                if (!user) next({ name: "authentication" });
+                else next();
+            });
+        },
+        redirect: "/message",
         children: [
             {
                 path: "/message",
@@ -23,6 +32,12 @@ const routes = [
         name: "authentication",
         component: Authentication,
         redirect: "/auth/login",
+        beforeEnter: (to, from, next) => {
+            onAuthStateChanged(auth, (user) => {
+                if (user) next({ name: "home" });
+                else next();
+            });
+        },
         children: [
             {
                 path: "/auth/login",
@@ -36,14 +51,6 @@ const routes = [
             },
         ],
     },
-    // {
-    //   path: '/about',
-    //   name: 'about',
-    //   // route level code-splitting
-    //   // this generates a separate chunk (about.[hash].js) for this route
-    //   // which is lazy-loaded when the route is visited.
-    //   component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
-    // }
 ];
 
 const router = createRouter({

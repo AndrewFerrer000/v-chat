@@ -6,6 +6,10 @@
         <div
             class="hidden lg:flex gap-5 items-center justify-between lg:px-3 my-5"
         >
+            <i
+                @click="logoutUser()"
+                class="bx bx-log-out text-2xl text-gray-500 hover:text-red-500 cursor-pointer"
+            ></i>
             <router-link to="#" class="flex items-center gap-3">
                 <img
                     src="https://picsum.photos/200/310"
@@ -13,7 +17,9 @@
                 />
                 <p>Andrew Ferrer</p>
             </router-link>
-            <i class="bx bx-edit-alt text-2xl text-gray-500"></i>
+            <i
+                class="bx bx-message-add text-2xl text-gray-500 hover:text-green-500 cursor-pointer"
+            ></i>
         </div>
 
         <!-- Search box -->
@@ -52,19 +58,42 @@
             </router-link>
         </div>
 
-        <!-- New Message -->
+        <!-- New Message and Logout -->
         <div
             class="border-t-2 border-gray-300 py-1 mt-auto self-center lg:hidden"
         >
             <div class="w-12 h-14 flex justify-center items-center">
-                <i class="bx bx-message-add text-2xl"></i>
+                <i
+                    class="bx bx-message-add text-2xl text-gray-500 hover:text-green-500 cursor-pointer"
+                ></i>
+            </div>
+            <div class="w-12 h-14 flex justify-center items-center">
+                <i
+                    @click="logoutUser()"
+                    class="bx bx-log-out text-2xl text-gray-500 hover:text-red-500 cursor-pointer"
+                ></i>
             </div>
         </div>
     </div>
 </template>
 
 <script>
-export default {};
+import { signOut } from "firebase/auth";
+import { auth } from "@/main";
+export default {
+    methods: {
+        logoutUser() {
+            console.log("CLICKED");
+            signOut(auth)
+                .then(() => {
+                    this.$router.replace({ name: "authentication" });
+                })
+                .catch((err) => {
+                    console.log(err);
+                });
+        },
+    },
+};
 </script>
 
 <style scoped>

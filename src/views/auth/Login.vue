@@ -51,7 +51,6 @@
 
 <script>
 import { signInWithEmailAndPassword } from "firebase/auth";
-// ! THERE HAS A CURRENT USER, PLEASE SIGNOUT IT FIRST BEFORE CODING AGAIN...
 import { auth } from "@/main";
 export default {
     data() {
@@ -64,7 +63,7 @@ export default {
         async loginUser() {
             signInWithEmailAndPassword(auth, this.email, this.password)
                 .then((user) => {
-                    console.log("Signed In: ", user.user);
+                    this.$router.replace({ name: "home" });
                 })
                 .catch((err) => {
                     console.log(err);
