@@ -6,7 +6,7 @@ import "./index.css";
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAbYi4XsOgzDG7oYnOS6rd8ZJPnrlBiBWc",
@@ -25,4 +25,8 @@ const auth = getAuth();
 export { db, auth };
 const analytics = getAnalytics(app);
 
-createApp(App).use(store).use(router).mount("#app");
+const initializeVueapp = onAuthStateChanged(auth, (user) => {
+    createApp(App).use(store).use(router).mount("#app");
+});
+
+initializeVueapp();
