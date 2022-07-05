@@ -38,9 +38,11 @@
 
         <!-- List -->
         <div
-            class="user-list relative flex flex-col items-center gap-2 lg:items-start overflow-x-hidden"
+            class="user-list w-full relative flex flex-col items-center gap-2 lg:items-start overflow-x-hidden"
+            v-for="list in $store.state.userlist"
+            :key="list"
         >
-            <router-link to="#">
+            <router-link :to="{ name: 'message' }" v-if="list" class="w-full">
                 <div
                     class="flex gap-2 cursor-pointer hover:scale-95 lg:hover:scale-100 transition-all lg:hover:bg-gray-100 lg:p-3"
                 >
@@ -49,9 +51,11 @@
                         class="rounded-full border-2 border-green-500 p-1 w-12 h-12"
                     />
                     <div class="hidden w-4/5 lg:block">
-                        <p class="font-semibold">HR Client</p>
-                        <p class="truncate w-4/5 text-gray-400">
-                            "What,would you say, is your strongest quality?"
+                        <p class="font-semibold truncate capitalize">
+                            {{ list.display_name }}
+                        </p>
+                        <p class="truncate text-gray-400">
+                            {{ list.recent_message }}
                         </p>
                     </div>
                 </div>
@@ -81,9 +85,11 @@
 import { signOut } from "firebase/auth";
 import { auth } from "@/main";
 export default {
+    async mounted() {
+        this.$store.dispatch("GET_USERLIST");
+    },
     methods: {
         logoutUser() {
-            console.log("CLICKED");
             signOut(auth)
                 .then(() => {
                     this.$router.replace({ name: "authentication" });

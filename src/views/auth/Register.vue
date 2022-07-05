@@ -67,7 +67,7 @@ export default {
             email: "",
             password: "",
             display_name: "",
-            created_At: "",
+            createdAt: "",
         };
     },
     methods: {
@@ -85,7 +85,7 @@ export default {
                         id: user.user.uid,
                         display_name: this.display_name,
                         email: user.user.email,
-                        created_At: Timestamp.now(),
+                        createdAt: Timestamp.now(),
                     }).then(() => {
                         // always signout the user after registration so they can login their account
                         signOut(auth);
