@@ -7,6 +7,8 @@ import Login from "../views/auth/Login.vue";
 import Register from "../views/auth/Register.vue";
 import { auth } from "@/main";
 
+const firstUserLink = localStorage.getItem("currentFirstLinkToActive");
+
 const routes = [
     {
         path: "/",
@@ -16,13 +18,17 @@ const routes = [
             if (!auth.currentUser) next({ name: "authentication" });
             else next();
         },
-        redirect: "/message",
-        meta: { requiresAuth: true },
+        redirect: `/message`,
         children: [
             {
-                path: "/message",
+                path: `/message/:id`,
                 name: "message",
                 component: Message,
+            },
+            // check params.id if empty set to space string
+            {
+                path: `/message`,
+                redirect: `/message/${firstUserLink || " "}`,
             },
         ],
     },

@@ -10,7 +10,7 @@
                 @click="logoutUser()"
                 class="bx bx-log-out text-2xl text-gray-500 hover:text-red-500 cursor-pointer"
             ></i>
-            <router-link to="#" class="flex items-center gap-3">
+            <router-link to="/view-profile" class="flex items-center gap-3">
                 <img
                     src="https://picsum.photos/200/310"
                     class="rounded-full w-12 h-12"
@@ -38,28 +38,32 @@
 
         <!-- List -->
         <div
-            class="user-list w-full relative flex flex-col items-center gap-2 lg:items-start overflow-x-hidden"
-            v-for="list in $store.state.userlist"
-            :key="list"
+            class="user-list w-full relative flex flex-col items-center lg:items-start overflow-x-hidden"
+            ref="list"
         >
-            <router-link :to="{ name: 'message' }" v-if="list" class="w-full">
-                <div
-                    class="flex gap-2 cursor-pointer hover:scale-95 lg:hover:scale-100 transition-all lg:hover:bg-gray-100 lg:p-3"
+            <template v-for="list in userlist" :key="list" :v-if="userlist">
+                <router-link
+                    :to="{ path: `/message/${list.user_id}` }"
+                    class="w-full p-2 lg:p-3 lg:hover:bg-gray-200"
                 >
-                    <img
-                        src="https://picsum.photos/200/300"
-                        class="rounded-full border-2 border-green-500 p-1 w-12 h-12"
-                    />
-                    <div class="hidden w-4/5 lg:block">
-                        <p class="font-semibold truncate capitalize">
-                            {{ list.display_name }}
-                        </p>
-                        <p class="truncate text-gray-400">
-                            {{ list.recent_message }}
-                        </p>
+                    <div
+                        class="w-full flex justify-center gap-2 cursor-pointer hover:scale-95 lg:hover:scale-100 transition-all"
+                    >
+                        <img
+                            src="https://picsum.photos/200/300"
+                            class="rounded-full border-2 border-green-500 p-1 w-12 h-12"
+                        />
+                        <div class="hidden w-4/5 lg:block">
+                            <p class="font-semibold truncate capitalize">
+                                {{ list.display_name }}
+                            </p>
+                            <p class="truncate text-gray-400">
+                                {{ list.recent_message }}
+                            </p>
+                        </div>
                     </div>
-                </div>
-            </router-link>
+                </router-link>
+            </template>
         </div>
 
         <!-- New Message and Logout -->
@@ -82,11 +86,20 @@
 </template>
 
 <script>
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { signOut } from "firebase/auth";
-import { auth } from "@/main";
+import { auth, db } from "@/main";
 export default {
+    data() {
+        return {
+            userlist: [],
+        };
+    },
     async mounted() {
-        this.$store.dispatch("GET_USERLIST");
+        this.getUserList();
+    },
+    unmounted() {
+        localStorage.clear();
     },
     methods: {
         logoutUser() {
@@ -98,11 +111,36 @@ export default {
                     console.log(err);
                 });
         },
+        async getUserList() {
+            const colRef = collection(
+                db,
+                `user_list/${auth.currentUser.uid}/list`
+            );
+            const q = query(colRef, orderBy("createdAt", "desc"));
+            onSnapshot(q, (data) => {
+                let temp = [];
+                data.forEach((document) => {
+                    temp.push(document.data());
+                });
+                if (temp.length != 0) {
+                    this.userlist = temp;
+                    localStorage.setItem(
+                        "currentFirstLinkToActive",
+                        this.userlist[0].user_id
+                    );
+                } else {
+                    localStorage.clear();
+                }
+            });
+        },
     },
 };
 </script>
 
-<style scoped>
+<style lang="postcss" scoped>
+.router-link-active {
+    @apply bg-gray-100;
+}
 @media screen and (max-width: 1024px) {
     .user-list {
         overflow-y: overlay;

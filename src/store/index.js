@@ -1,23 +1,34 @@
-import { createStore } from "vuex";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { db } from "@/main";
+// import { createStore } from "vuex";
 
-export default createStore({
+// export default createStore({
+//     state: {
+//         userlist: [],
+//         firstUserLink: "",
+//     },
+//     mutations: {
+//         getFirstUserLink(state, value) {
+//             return (state.firstUserLink = value);
+//         },
+//     },
+//     actions: {
+//         GET_USERLIST(context) {
+//             context.commit("userlist");
+//         },
+//     },
+//     modules: {},
+// });
+
+import Vuex from "vuex";
+
+//init store
+const store = new Vuex.Store({
     state: {
         userlist: [],
+        firstUserLink: "",
     },
     mutations: {
-        async userlist(state) {
-            const q = query(
-                collection(db, "user_chat"),
-                orderBy("modifiedAt", "desc")
-            );
-            onSnapshot(q, (data) => {
-                state.userlist = [];
-                data.forEach((document) => {
-                    state.userlist.push(document.data());
-                });
-            });
+        async getFirstUserLink(state, value) {
+            return (state.firstUserLink = value);
         },
     },
     actions: {
@@ -27,3 +38,5 @@ export default createStore({
     },
     modules: {},
 });
+
+export default store;

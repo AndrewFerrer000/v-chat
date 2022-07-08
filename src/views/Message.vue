@@ -1,5 +1,5 @@
 <template>
-    <div class="relative w-full flex flex-col">
+    <div class="relative w-full flex flex-col" v-if="$route.params.id != ' '">
         <!-- Message Header -->
         <div
             id="backgroundImg"
@@ -14,7 +14,7 @@
                     class="rounded-full w-10 h-10"
                 />
                 <div>
-                    <p>HR Client</p>
+                    <p>{{ userInfo.display_name }}</p>
                     <p class="text-xs text-green-500">Active</p>
                 </div>
             </div>
@@ -32,21 +32,21 @@
                 class="w-full items-start flex gap-2"
                 v-for="message in messages"
                 :key="message"
-                :class="{ 'justify-end': message.sender == currentUser }"
+                :class="{ 'justify-end': message.from == currentUser }"
             >
                 <img
-                    :src="message.photoURL"
+                    src="https://picsum.photos/200/300"
                     :class="{
-                        'order-2': message.sender == currentUser,
+                        'order-2': message.from == currentUser,
                     }"
-                    class="rounded-full w-10 h-10"
+                    class="rounded-full w-10 h-10 shadow-md border border-gray-300"
                 />
                 <div>
                     <p
-                        class="rounded-lg bg-white py-2 px-4 max-w-xs sm:max-w-sm md:max-w-md"
+                        class="rounded-lg bg-white py-2 px-4 max-w-xs sm:max-w-sm md:max-w-md shadow-md"
                         :class="{
                             'bg-green-500 text-white order-1':
-                                message.sender == currentUser,
+                                message.from == currentUser,
                         }"
                     >
                         {{ message.text }}
@@ -54,83 +54,119 @@
                     <p
                         class="text-xs text-gray-500 mt-1 ml-2"
                         :class="{
-                            'mr-2 text-right': message.sender == currentUser,
+                            'mr-2 text-right': message.from == currentUser,
                         }"
                     >
-                        {{ message.data_sent }}
+                        {{ message.createdAt.seconds }}
                     </p>
                 </div>
             </div>
         </div>
 
         <!-- Actions -->
-        <div
-            class="w-full h-16 flex items-center justify-between gap-5 bg-white border-t border-gray-300 px-5 mt-auto"
-        >
-            <input
-                class="w-full bg-gray-100 py-2 px-4 rounded-lg outline-none"
-                type="text"
-                placeholder="Message"
-            />
-            <div>
-                <i
-                    class="bx bx-send text-3xl text-green-500 transform -rotate-45"
-                ></i>
-            </div>
+        <div class="bg-white border-t border-gray-300 px-5 mt-auto">
+            <form
+                class="w-full h-16 flex items-center justify-between gap-5"
+                @submit.prevent="submitMessage"
+            >
+                <input
+                    class="w-full bg-gray-100 py-2 px-4 rounded-lg outline-none"
+                    type="text"
+                    placeholder="Message"
+                    v-model="message"
+                />
+                <button type="submit">
+                    <i
+                        class="bx bx-send text-3xl text-green-500 transform -rotate-45"
+                    ></i>
+                </button>
+            </form>
         </div>
     </div>
 </template>
 
 <script>
+import {
+    collection,
+    onSnapshot,
+    query,
+    orderBy,
+    where,
+    setDoc,
+    getDoc,
+    getDocs,
+    doc,
+    Timestamp,
+} from "firebase/firestore";
+import { db, auth } from "@/main";
 export default {
     data() {
         return {
-            currentUser: "Andrew Ferrer",
-            messages: [
-                {
-                    photoURL: "https://picsum.photos/200/300",
-                    text: "What do you currently do in life?",
-                    reciever: "Andrew Ferrer",
-                    sender: "HR Client",
-                    data_sent: "4:35 pm",
-                },
-                {
-                    photoURL: "https://picsum.photos/200/310",
-                    text: "Good question - I am still trying to figure that out!",
-                    reciever: "HR Client",
-                    sender: "Andrew Ferrer",
-                    data_sent: "4:37 pm",
-                },
-                {
-                    photoURL: "https://picsum.photos/200/300",
-                    text: "What is your deepest desire?",
-                    reciever: "Andrew Ferrer",
-                    sender: "HR Client",
-                    data_sent: "4:39 pm",
-                },
-                {
-                    photoURL: "https://picsum.photos/200/310",
-                    text: "Inner and outer peace",
-                    reciever: "HR Client",
-                    sender: "Andrew Ferrer",
-                    data_sent: "4:40 pm",
-                },
-                {
-                    photoURL: "https://picsum.photos/200/310",
-                    text: "A compassionate world",
-                    reciever: "HR Client",
-                    sender: "Andrew Ferrer",
-                    data_sent: "4:40 pm",
-                },
-                {
-                    photoURL: "https://picsum.photos/200/300",
-                    text: "What,would you say, is your strongest quality?",
-                    reciever: "Andrew Ferrer",
-                    sender: "HR Client",
-                    data_sent: "4:42 pm",
-                },
-            ],
+            currentUser: "",
+            userInfo: {},
+            messages: [],
+            message: "",
         };
+    },
+    mounted() {
+        this.getMessage();
+        this.getUserInfo();
+        this.currentUser = auth.currentUser.uid;
+    },
+    watch: {
+        $route(to, from) {
+            this.getUserInfo();
+            this.getMessage();
+            this.message = "";
+        },
+    },
+    methods: {
+        async getUserInfo() {
+            const getChatUserId = this.$route.params.id;
+
+            onSnapshot(doc(db, "users", `${getChatUserId}`), (doc) => {
+                this.userInfo = doc.data();
+            });
+        },
+        async getMessage() {
+            const getChatUserId = this.$route.params.id;
+            const getCurrentUserID = auth.currentUser.uid;
+            const q = query(
+                collection(
+                    db,
+                    `/message/${getCurrentUserID}/messages/${getChatUserId}/actual_message`
+                ),
+                orderBy("createdAt", "asc")
+            );
+            onSnapshot(q, (data) => {
+                let sampleData = [];
+                data.forEach((document) => {
+                    sampleData.push(document.data());
+                });
+                this.messages = sampleData;
+            });
+        },
+
+        async submitMessage() {
+            const getChatUserId = this.$route.params.id;
+            const getCurrentUserID = auth.currentUser.uid;
+            const colRef = collection(
+                db,
+                `/message/${getCurrentUserID}/messages/${getChatUserId}/actual_message`
+            );
+            await setDoc(doc(colRef), {
+                createdAt: Timestamp.now(),
+                text: this.message,
+                to: getChatUserId,
+                from: getCurrentUserID,
+            })
+                .then(() => {
+                    this.message = "";
+                })
+                .catch((err) => {
+                    console.log(err);
+                });
+        },
     },
 };
 </script>
