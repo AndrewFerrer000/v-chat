@@ -26,7 +26,7 @@ export { db, auth };
 const analytics = getAnalytics(app);
 
 const initializeVueapp = onAuthStateChanged(auth, (user) => {
-    createApp(App).use(store).use(router).mount("#app");
+    createApp(App).use(router).use(store).mount("#app");
 });
 
 initializeVueapp();

@@ -97,6 +97,7 @@ import {
     getDocs,
     doc,
     Timestamp,
+    updateDoc,
 } from "firebase/firestore";
 import { db, auth } from "@/main";
 export default {
@@ -110,57 +111,64 @@ export default {
     },
     mounted() {
         this.getMessage();
-        this.getUserInfo();
+        this.getChatInfo();
         this.currentUser = auth.currentUser.uid;
     },
     watch: {
         $route(to, from) {
-            this.getUserInfo();
             this.getMessage();
+            this.getChatInfo();
             this.message = "";
         },
     },
     methods: {
-        async getUserInfo() {
-            const getChatUserId = this.$route.params.id;
+        async getChatInfo() {
+            const getChatLink = this.$route.params.id;
+            const docRef = doc(db, "channel", getChatLink);
+            const docSnap = await getDoc(docRef);
+            let members = docSnap.data().members;
+            for (let member of members) {
+                if (member != auth.currentUser.uid) {
+                    const colRef = collection(db, `users`);
+                    const q = doc(colRef, `${member}`);
 
-            onSnapshot(doc(db, "users", `${getChatUserId}`), (doc) => {
-                this.userInfo = doc.data();
-            });
+                    onSnapshot(q, (document) => {
+                        this.userInfo = document.data();
+                    });
+                }
+            }
         },
         async getMessage() {
-            const getChatUserId = this.$route.params.id;
-            const getCurrentUserID = auth.currentUser.uid;
+            const getChatLink = this.$route.params.id;
             const q = query(
-                collection(
-                    db,
-                    `/message/${getCurrentUserID}/messages/${getChatUserId}/actual_message`
-                ),
+                collection(db, `channel/${getChatLink}/messages`),
                 orderBy("createdAt", "asc")
             );
             onSnapshot(q, (data) => {
-                let sampleData = [];
+                let temp = [];
                 data.forEach((document) => {
-                    sampleData.push(document.data());
+                    temp.push(document.data());
                 });
-                this.messages = sampleData;
+                this.messages = temp;
             });
         },
-
         async submitMessage() {
-            const getChatUserId = this.$route.params.id;
-            const getCurrentUserID = auth.currentUser.uid;
-            const colRef = collection(
-                db,
-                `/message/${getCurrentUserID}/messages/${getChatUserId}/actual_message`
-            );
+            const getChatLink = this.$route.params.id;
+            const colRef = collection(db, `/channel/${getChatLink}/messages`);
             await setDoc(doc(colRef), {
                 createdAt: Timestamp.now(),
                 text: this.message,
-                to: getChatUserId,
-                from: getCurrentUserID,
+                from: auth.currentUser.uid,
             })
                 .then(() => {
+                    const colRef = collection(db, "channel");
+                    updateDoc(doc(colRef, getChatLink), {
+                        recent_message: {
+                            createdAt: Timestamp.now(),
+                            from: auth.currentUser.uid,
+                            text: this.message,
+                        },
+                    });
                     this.message = "";
                 })
                 .catch((err) => {

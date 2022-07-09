@@ -41,9 +41,9 @@
             class="user-list w-full relative flex flex-col items-center lg:items-start overflow-x-hidden"
             ref="list"
         >
-            <template v-for="list in userlist" :key="list" :v-if="userlist">
+            <template v-for="list in userList" :key="list" :v-if="userList">
                 <router-link
-                    :to="{ path: `/message/${list.user_id}` }"
+                    :to="{ path: `/message/${list.chatLink}` }"
                     class="w-full p-2 lg:p-3 lg:hover:bg-gray-200"
                 >
                     <div
@@ -58,7 +58,7 @@
                                 {{ list.display_name }}
                             </p>
                             <p class="truncate text-gray-400">
-                                {{ list.recent_message }}
+                                {{ list.text }}
                             </p>
                         </div>
                     </div>
@@ -86,13 +86,19 @@
 </template>
 
 <script>
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import {
+    collection,
+    query,
+    orderBy,
+    onSnapshot,
+    where,
+} from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/main";
 export default {
     data() {
         return {
-            userlist: [],
+            userList: [],
         };
     },
     async mounted() {
@@ -112,25 +118,22 @@ export default {
                 });
         },
         async getUserList() {
-            const colRef = collection(
-                db,
-                `user_list/${auth.currentUser.uid}/list`
+            const q = query(
+                collection(db, "channel"),
+                where("members", "array-contains", `${auth.currentUser.uid}`),
+                orderBy("recent_message.createdAt", "desc")
             );
-            const q = query(colRef, orderBy("createdAt", "desc"));
             onSnapshot(q, (data) => {
                 let temp = [];
                 data.forEach((document) => {
-                    temp.push(document.data());
+                    temp.push({
+                        createdAt: document.data().recent_message.createdAt,
+                        text: document.data().recent_message.text,
+                        chatLink: document.id,
+                        display_name: document.data().recent_message.from,
+                    });
                 });
-                if (temp.length != 0) {
-                    this.userlist = temp;
-                    localStorage.setItem(
-                        "currentFirstLinkToActive",
-                        this.userlist[0].user_id
-                    );
-                } else {
-                    localStorage.clear();
-                }
+                this.userList = temp;
             });
         },
     },
