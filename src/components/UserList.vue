@@ -40,8 +40,9 @@
         <div
             class="user-list w-full relative flex flex-col items-center lg:items-start overflow-x-hidden"
             ref="list"
+            v-if="$store.state.userList"
         >
-            <template v-for="list in userList" :key="list" :v-if="userList">
+            <template v-for="list in $store.state.userList" :key="list">
                 <router-link
                     :to="{ path: `/message/${list.chatLink}` }"
                     class="w-full p-2 lg:p-3 lg:hover:bg-gray-200"
@@ -92,6 +93,8 @@ import {
     orderBy,
     onSnapshot,
     where,
+    getDoc,
+    doc,
 } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/main";
@@ -99,9 +102,10 @@ export default {
     data() {
         return {
             userList: [],
+            userID: "",
         };
     },
-    async mounted() {
+    mounted() {
         this.getUserList();
     },
     unmounted() {
@@ -118,23 +122,34 @@ export default {
                 });
         },
         async getUserList() {
-            const q = query(
-                collection(db, "channel"),
-                where("members", "array-contains", `${auth.currentUser.uid}`),
-                orderBy("recent_message.createdAt", "desc")
-            );
-            onSnapshot(q, (data) => {
-                let temp = [];
-                data.forEach((document) => {
-                    temp.push({
-                        createdAt: document.data().recent_message.createdAt,
-                        text: document.data().recent_message.text,
-                        chatLink: document.id,
-                        display_name: document.data().recent_message.from,
-                    });
-                });
-                this.userList = temp;
-            });
+            this.$store.dispatch("getUserlist");
+            const temp = await this.$store.state.userList;
+            console.log(temp);
+            // const q = query(
+            //     collection(db, "channel"),
+            //     where("members", "array-contains", `${auth.currentUser.uid}`),
+            //     orderBy("recent_message.createdAt", "desc")
+            // );
+            // onSnapshot(q, (data) => {
+            //     let temp = [];
+            //     data.forEach((document) => {
+            //         // var uid = "";
+            //         // for (let member of document.data().members) {
+            //         //     if (member != auth.currentUser.uid) {
+            //         //         uid = member;
+            //         //     }
+            //         // }
+            //         // store.dispatch("getUserName", [1, 23, 4, 5, 5]);
+            //         // console.log(store.state.userNames);
+            //         temp.push({
+            //             createdAt: document.data().recent_message.createdAt,
+            //             text: document.data().recent_message.text,
+            //             chatLink: document.id,
+            //             display_name: document.data().recent_message.from,
+            //         });
+            //     });
+            //     this.userList = temp;
+            // });
         },
     },
 };

@@ -8,44 +8,55 @@ import {
     doc,
     getDocs,
     getDoc,
-    DocumentSnapshot,
 } from "firebase/firestore";
-import { signOut } from "firebase/auth";
 import { auth, db } from "@/main";
 
 export default createStore({
     state: {
         userList: [],
+        messages: [],
     },
     mutations: {
-        GET_USERLIST(state, payload) {
+        SET_USERLIST(state, payload) {
             state.userList = payload;
-            console.log("MUTATION");
+        },
+        SET_MESSAGES(state, payload) {
+            state.messages = payload;
         },
     },
     actions: {
         async getUserlist(context) {
-            console.log("ACTION");
-            let sample = [];
+            let list = [];
             const q = query(
-                doc(db, "channel"),
+                collection(db, "channel"),
                 where("members", "array-contains", `${auth.currentUser.uid}`),
                 orderBy("recent_message.createdAt", "desc")
             );
             onSnapshot(q, (data) => {
-                let temp = [];
                 data.forEach((document) => {
-                    temp.push({
+                    list.push({
                         createdAt: document.data().recent_message.createdAt,
                         text: document.data().recent_message.text,
                         chatLink: document.id,
                         display_name: document.data().recent_message.from,
                     });
                 });
-                sample = temp;
+                context.commit("SET_USERLIST", list);
             });
-            context.commit("GET_USERLIST", sample);
-            console.log(context.state.userList);
+        },
+
+        async getMessages(context, payload) {
+            const q = query(
+                collection(db, `channel/${payload}/messages`),
+                orderBy("createdAt", "asc")
+            );
+            onSnapshot(q, (data) => {
+                let temp = [];
+                data.forEach((document) => {
+                    temp.push(document.data());
+                });
+                context.commit("SET_MESSAGES", temp);
+            });
         },
     },
     modules: {},

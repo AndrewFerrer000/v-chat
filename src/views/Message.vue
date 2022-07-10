@@ -1,5 +1,8 @@
 <template>
-    <div class="relative w-full flex flex-col" v-if="$route.params.id != ' '">
+    <div
+        class="relative w-full flex flex-col overflow-hidden"
+        v-if="$route.params.id != ' '"
+    >
         <!-- Message Header -->
         <div
             id="backgroundImg"
@@ -26,11 +29,15 @@
         </div>
 
         <!-- Body -->
-        <div class="h-4/5 p-5 flex flex-col gap-5 overflow-y-auto">
+        <div
+            class="h-4/5 p-5 flex flex-col gap-5 overflow-y-auto"
+            ref="messageContainer"
+            v-if="$store.state.messages"
+        >
             <!-- Actual message -->
             <div
                 class="w-full items-start flex gap-2"
-                v-for="message in messages"
+                v-for="message in $store.state.messages"
                 :key="message"
                 :class="{ 'justify-end': message.from == currentUser }"
             >
@@ -83,6 +90,9 @@
             </form>
         </div>
     </div>
+    <div class="relative w-full flex flex-col bg-gray-100" v-else>
+        Created New
+    </div>
 </template>
 
 <script>
@@ -91,10 +101,8 @@ import {
     onSnapshot,
     query,
     orderBy,
-    where,
     setDoc,
     getDoc,
-    getDocs,
     doc,
     Timestamp,
     updateDoc,
@@ -113,12 +121,14 @@ export default {
         this.getMessage();
         this.getChatInfo();
         this.currentUser = auth.currentUser.uid;
+        this.scrollToEnd();
     },
     watch: {
         $route(to, from) {
             this.getMessage();
             this.getChatInfo();
             this.message = "";
+            this.scrollToEnd();
         },
     },
     methods: {
@@ -126,32 +136,25 @@ export default {
             const getChatLink = this.$route.params.id;
             const docRef = doc(db, "channel", getChatLink);
             const docSnap = await getDoc(docRef);
-            let members = docSnap.data().members;
-            for (let member of members) {
-                if (member != auth.currentUser.uid) {
-                    const colRef = collection(db, `users`);
-                    const q = doc(colRef, `${member}`);
+            if (docSnap.exists()) {
+                let members = docSnap.data().members;
+                for (let member of members) {
+                    if (member != auth.currentUser.uid) {
+                        const colRef = collection(db, `users`);
+                        const q = doc(colRef, `${member}`);
 
-                    onSnapshot(q, (document) => {
-                        this.userInfo = document.data();
-                    });
+                        onSnapshot(q, (document) => {
+                            this.userInfo = document.data();
+                        });
+                    }
                 }
             }
         },
         async getMessage() {
-            const getChatLink = this.$route.params.id;
-            const q = query(
-                collection(db, `channel/${getChatLink}/messages`),
-                orderBy("createdAt", "asc")
-            );
-            onSnapshot(q, (data) => {
-                let temp = [];
-                data.forEach((document) => {
-                    temp.push(document.data());
-                });
-                this.messages = temp;
-            });
+            const chatLink = this.$route.params.id;
+            this.$store.dispatch("getMessages", chatLink);
         },
+
         async submitMessage() {
             const getChatLink = this.$route.params.id;
             const colRef = collection(db, `/channel/${getChatLink}/messages`);
@@ -169,11 +172,18 @@ export default {
                             text: this.message,
                         },
                     });
+                    this.scrollToEnd();
                     this.message = "";
                 })
                 .catch((err) => {
                     console.log(err);
                 });
+        },
+        scrollToEnd() {
+            var content = this.$refs.messageContainer;
+            if (content) {
+                content.scrollTop = content.scrollHeight;
+            }
         },
     },
 };
