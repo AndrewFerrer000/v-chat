@@ -1,5 +1,6 @@
 <template>
     <div
+        v-if="userList.length"
         class="bg-white border-r border-gray-300 w-20 lg:w-80 flex flex-col gap-2"
     >
         <!-- Current User -->
@@ -23,7 +24,9 @@
         </div>
 
         <!-- Search box -->
-        <div class="flex justify-center lg:justify-start my-5 lg:px-3 lg:my-0">
+        <div
+            class="flex justify-center lg:justify-start my-5 lg:px-3 lg:my-0 lg:mb-5"
+        >
             <div
                 class="w-12 lg:w-full h-12 bg-gray-100 rounded-full grid place-items-center lg:flex lg:px-5"
             >
@@ -40,9 +43,8 @@
         <div
             class="user-list w-full relative flex flex-col items-center lg:items-start overflow-x-hidden"
             ref="list"
-            v-if="$store.state.userList"
         >
-            <template v-for="list in $store.state.userList" :key="list">
+            <template v-for="(list, key) in userList" :key="key">
                 <router-link
                     :to="{ path: `/message/${list.chatLink}` }"
                     class="w-full p-2 lg:p-3 lg:hover:bg-gray-200"
@@ -84,73 +86,44 @@
             </div>
         </div>
     </div>
+    <UserListLoader v-else />
 </template>
 
 <script>
-import {
-    collection,
-    query,
-    orderBy,
-    onSnapshot,
-    where,
-    getDoc,
-    doc,
-} from "firebase/firestore";
 import { signOut } from "firebase/auth";
-import { auth, db } from "@/main";
+import { auth } from "@/main";
+import { useStore } from "vuex";
+import { useRouter } from "vue-router";
+import { onMounted, ref, watchEffect } from "@vue/runtime-core";
+import UserListLoader from "@/components/UserListLoader";
 export default {
-    data() {
-        return {
-            userList: [],
-            userID: "",
-        };
+    components: {
+        UserListLoader,
     },
-    mounted() {
-        this.getUserList();
-    },
-    unmounted() {
-        localStorage.clear();
-    },
-    methods: {
-        logoutUser() {
+    setup() {
+        const store = useStore();
+        const router = useRouter();
+        const userList = ref([]);
+
+        onMounted(async () => {
+            store.dispatch("getUserlist");
+        });
+
+        watchEffect(() => {
+            return (userList.value = store.state.userList);
+        });
+
+        const logoutUser = () => {
             signOut(auth)
                 .then(() => {
-                    this.$router.replace({ name: "authentication" });
+                    router.replace({ name: "authentication" });
                 })
                 .catch((err) => {
                     console.log(err);
                 });
-        },
-        async getUserList() {
-            this.$store.dispatch("getUserlist");
-            const temp = await this.$store.state.userList;
-            console.log(temp);
-            // const q = query(
-            //     collection(db, "channel"),
-            //     where("members", "array-contains", `${auth.currentUser.uid}`),
-            //     orderBy("recent_message.createdAt", "desc")
-            // );
-            // onSnapshot(q, (data) => {
-            //     let temp = [];
-            //     data.forEach((document) => {
-            //         // var uid = "";
-            //         // for (let member of document.data().members) {
-            //         //     if (member != auth.currentUser.uid) {
-            //         //         uid = member;
-            //         //     }
-            //         // }
-            //         // store.dispatch("getUserName", [1, 23, 4, 5, 5]);
-            //         // console.log(store.state.userNames);
-            //         temp.push({
-            //             createdAt: document.data().recent_message.createdAt,
-            //             text: document.data().recent_message.text,
-            //             chatLink: document.id,
-            //             display_name: document.data().recent_message.from,
-            //         });
-            //     });
-            //     this.userList = temp;
-            // });
-        },
+        };
+
+        return { logoutUser, userList };
     },
 };
 </script>
@@ -159,6 +132,7 @@ export default {
 .router-link-active {
     @apply bg-gray-100;
 }
+
 @media screen and (max-width: 1024px) {
     .user-list {
         overflow-y: overlay;

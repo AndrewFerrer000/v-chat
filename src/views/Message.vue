@@ -35,39 +35,41 @@
             v-if="$store.state.messages"
         >
             <!-- Actual message -->
-            <div
-                class="w-full items-start flex gap-2"
-                v-for="message in $store.state.messages"
-                :key="message"
-                :class="{ 'justify-end': message.from == currentUser }"
-            >
-                <img
-                    src="https://picsum.photos/200/300"
-                    :class="{
-                        'order-2': message.from == currentUser,
-                    }"
-                    class="rounded-full w-10 h-10 shadow-md border border-gray-300"
-                />
-                <div>
-                    <p
-                        class="rounded-lg bg-white py-2 px-4 max-w-xs sm:max-w-sm md:max-w-md shadow-md"
+            <transition-group name="list">
+                <div
+                    class="w-full items-start flex gap-2"
+                    v-for="message in $store.state.messages"
+                    :key="message"
+                    :class="{ 'justify-end': message.from == currentUser }"
+                >
+                    <img
+                        src="https://picsum.photos/200/300"
                         :class="{
-                            'bg-green-500 text-white order-1':
-                                message.from == currentUser,
+                            'order-2': message.from == currentUser,
                         }"
-                    >
-                        {{ message.text }}
-                    </p>
-                    <p
-                        class="text-xs text-gray-500 mt-1 ml-2"
-                        :class="{
-                            'mr-2 text-right': message.from == currentUser,
-                        }"
-                    >
-                        {{ message.createdAt.seconds }}
-                    </p>
+                        class="rounded-full w-10 h-10 shadow-md border border-gray-300"
+                    />
+                    <div>
+                        <p
+                            class="rounded-lg bg-white py-2 px-4 max-w-xs sm:max-w-sm md:max-w-md shadow-md"
+                            :class="{
+                                'bg-green-500 text-white order-1':
+                                    message.from == currentUser,
+                            }"
+                        >
+                            {{ message.text }}
+                        </p>
+                        <p
+                            class="text-xs text-gray-500 mt-1 ml-2"
+                            :class="{
+                                'mr-2 text-right': message.from == currentUser,
+                            }"
+                        >
+                            {{ message.createdAt.seconds }}
+                        </p>
+                    </div>
                 </div>
-            </div>
+            </transition-group>
         </div>
 
         <!-- Actions -->
@@ -90,7 +92,10 @@
             </form>
         </div>
     </div>
-    <div class="relative w-full flex flex-col bg-gray-100" v-else>
+    <div
+        class="relative w-full h-full grid place-items-center bg-gray-100"
+        v-else
+    >
         Created New
     </div>
 </template>
@@ -121,14 +126,12 @@ export default {
         this.getMessage();
         this.getChatInfo();
         this.currentUser = auth.currentUser.uid;
-        this.scrollToEnd();
     },
     watch: {
         $route(to, from) {
             this.getMessage();
             this.getChatInfo();
             this.message = "";
-            this.scrollToEnd();
         },
     },
     methods: {
@@ -155,7 +158,11 @@ export default {
             this.$store.dispatch("getMessages", chatLink);
         },
 
+        // DONE
         async submitMessage() {
+            if (!/\S/.test(this.message)) {
+                return;
+            }
             const getChatLink = this.$route.params.id;
             const colRef = collection(db, `/channel/${getChatLink}/messages`);
             await setDoc(doc(colRef), {
@@ -172,18 +179,11 @@ export default {
                             text: this.message,
                         },
                     });
-                    this.scrollToEnd();
                     this.message = "";
                 })
                 .catch((err) => {
                     console.log(err);
                 });
-        },
-        scrollToEnd() {
-            var content = this.$refs.messageContainer;
-            if (content) {
-                content.scrollTop = content.scrollHeight;
-            }
         },
     },
 };
@@ -192,5 +192,14 @@ export default {
 <style lang="postcss" scoped>
 #backgroundImg {
     background-image: url("../assets/Pngtree.png");
+}
+.list-enter-active {
+    animation: fade-in 250ms ease-in-out;
+}
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+        transform: translateY(30px);
+    }
 }
 </style>

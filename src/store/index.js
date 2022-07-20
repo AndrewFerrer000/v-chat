@@ -15,6 +15,7 @@ export default createStore({
     state: {
         userList: [],
         messages: [],
+        userChatInfo: [],
     },
     mutations: {
         SET_USERLIST(state, payload) {
@@ -22,6 +23,9 @@ export default createStore({
         },
         SET_MESSAGES(state, payload) {
             state.messages = payload;
+        },
+        SET_USER_CHAT_INFO(state, payload) {
+            state.userChatInfo = payload;
         },
     },
     actions: {
@@ -32,16 +36,36 @@ export default createStore({
                 where("members", "array-contains", `${auth.currentUser.uid}`),
                 orderBy("recent_message.createdAt", "desc")
             );
-            onSnapshot(q, (data) => {
-                data.forEach((document) => {
-                    list.push({
-                        createdAt: document.data().recent_message.createdAt,
-                        text: document.data().recent_message.text,
-                        chatLink: document.id,
-                        display_name: document.data().recent_message.from,
+            const unsubscribe = onSnapshot(q, (data) => {
+                let temp = [];
+                if (!data.empty) {
+                    const finalList = async () => {
+                        for (const document of data.docs) {
+                            const getName = async () => {
+                                for (const member of document.data().members) {
+                                    if (member != auth.currentUser.uid) {
+                                        const docRef = doc(db, "users", member);
+                                        const docSnap = await getDoc(docRef);
+                                        return docSnap.data();
+                                    }
+                                }
+                            };
+                            const sample = await getName();
+                            temp.push({
+                                createdAt:
+                                    document.data().recent_message.createdAt,
+                                text: document.data().recent_message.text,
+                                chatLink: document.id,
+                                display_name: sample.display_name,
+                            });
+                            list = temp;
+                        }
+                        return list;
+                    };
+                    finalList().then((result) => {
+                        context.commit("SET_USERLIST", result);
                     });
-                });
-                context.commit("SET_USERLIST", list);
+                }
             });
         },
 
