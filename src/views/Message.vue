@@ -13,11 +13,22 @@
         >
             <div class="flex items-center gap-2">
                 <img
-                    src="https://picsum.photos/200/300"
+                    v-if="userInfo.photoURL"
+                    :src="userInfo.photoURL"
                     class="rounded-full w-10 h-10"
                 />
+                <div
+                    v-else
+                    class="w-10 h-10 relative flex justify-center items-center rounded-full text-lg text-white uppercase border"
+                >
+                    <span
+                        class="w-full h-full rounded-full grid place-items-center overflow-hidden"
+                        :class="[`bg-green-400`]"
+                        >VC</span
+                    >
+                </div>
                 <div>
-                    <p>{{ userInfo.display_name }}</p>
+                    <p class="capitalize">{{ userInfo.display_name }}</p>
                     <p class="text-xs text-green-500">Active</p>
                 </div>
             </div>
@@ -32,44 +43,50 @@
         <div
             class="h-4/5 p-5 flex flex-col gap-5 overflow-y-auto"
             ref="messageContainer"
-            v-if="$store.state.messages"
         >
             <!-- Actual message -->
-            <transition-group name="list">
-                <div
-                    class="w-full items-start flex gap-2"
-                    v-for="message in $store.state.messages"
-                    :key="message"
-                    :class="{ 'justify-end': message.from == currentUser }"
-                >
-                    <img
-                        src="https://picsum.photos/200/300"
+            <div
+                class="w-full items-start flex gap-2"
+                v-for="(message, index) in messages"
+                :key="index"
+                :class="{ 'justify-end': message.from == currentUser }"
+            >
+                <img
+                    v-if="userInfo.photoURL"
+                    :src="userInfo.photoURL"
+                    :class="{
+                        'order-2': message.from == currentUser,
+                    }"
+                    class="rounded-full w-10 h-10 shadow-md border border-gray-300"
+                />
+                <img
+                    v-else
+                    src="https://picsum.photos/200/300"
+                    :class="{
+                        'order-2': message.from == currentUser,
+                    }"
+                    class="rounded-full w-10 h-10 shadow-md border border-gray-300"
+                />
+                <div>
+                    <p
+                        class="rounded-lg bg-white py-2 px-4 max-w-xs sm:max-w-sm md:max-w-md shadow-md"
                         :class="{
-                            'order-2': message.from == currentUser,
+                            'bg-green-500 text-white order-1':
+                                message.from == currentUser,
                         }"
-                        class="rounded-full w-10 h-10 shadow-md border border-gray-300"
-                    />
-                    <div>
-                        <p
-                            class="rounded-lg bg-white py-2 px-4 max-w-xs sm:max-w-sm md:max-w-md shadow-md"
-                            :class="{
-                                'bg-green-500 text-white order-1':
-                                    message.from == currentUser,
-                            }"
-                        >
-                            {{ message.text }}
-                        </p>
-                        <p
-                            class="text-xs text-gray-500 mt-1 ml-2"
-                            :class="{
-                                'mr-2 text-right': message.from == currentUser,
-                            }"
-                        >
-                            {{ message.createdAt.seconds }}
-                        </p>
-                    </div>
+                    >
+                        {{ message.text }}
+                    </p>
+                    <p
+                        class="text-xs text-gray-500 mt-1 ml-2"
+                        :class="{
+                            'mr-2 text-right': message.from == currentUser,
+                        }"
+                    >
+                        {{ message.createdAt.seconds }}
+                    </p>
                 </div>
-            </transition-group>
+            </div>
         </div>
 
         <!-- Actions -->
@@ -108,83 +125,136 @@ import {
     orderBy,
     setDoc,
     getDoc,
+    getDocs,
     doc,
     Timestamp,
     updateDoc,
+    documentId,
 } from "firebase/firestore";
 import { db, auth } from "@/main";
+import { onMounted, watch, ref, watchEffect } from "@vue/runtime-core";
+import { useStore } from "vuex";
+import { useRoute } from "vue-router";
 export default {
-    data() {
-        return {
-            currentUser: "",
-            userInfo: {},
-            messages: [],
-            message: "",
-        };
-    },
-    mounted() {
-        this.getMessage();
-        this.getChatInfo();
-        this.currentUser = auth.currentUser.uid;
-    },
-    watch: {
-        $route(to, from) {
-            this.getMessage();
-            this.getChatInfo();
-            this.message = "";
-        },
-    },
-    methods: {
-        async getChatInfo() {
-            const getChatLink = this.$route.params.id;
-            const docRef = doc(db, "channel", getChatLink);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                let members = docSnap.data().members;
-                for (let member of members) {
-                    if (member != auth.currentUser.uid) {
-                        const colRef = collection(db, `users`);
-                        const q = doc(colRef, `${member}`);
+    setup() {
+        const store = useStore();
+        const route = useRoute();
+        const messages = ref([]);
+        const message = ref("");
+        const userInfo = ref({});
+        const currentUser = auth.currentUser.uid;
 
-                        onSnapshot(q, (document) => {
-                            this.userInfo = document.data();
-                        });
-                    }
-                }
-            }
-        },
-        async getMessage() {
-            const chatLink = this.$route.params.id;
-            this.$store.dispatch("getMessages", chatLink);
-        },
+        onMounted(async () => {
+            getMessages();
+            getChatInfo();
+        });
 
-        // DONE
-        async submitMessage() {
-            if (!/\S/.test(this.message)) {
-                return;
-            }
-            const getChatLink = this.$route.params.id;
-            const colRef = collection(db, `/channel/${getChatLink}/messages`);
-            await setDoc(doc(colRef), {
-                createdAt: Timestamp.now(),
-                text: this.message,
-                from: auth.currentUser.uid,
-            })
-                .then(() => {
-                    const colRef = collection(db, "channel");
-                    updateDoc(doc(colRef, getChatLink), {
-                        recent_message: {
-                            createdAt: Timestamp.now(),
-                            from: auth.currentUser.uid,
-                            text: this.message,
-                        },
-                    });
-                    this.message = "";
-                })
-                .catch((err) => {
-                    console.log(err);
+        const getMessages = () => {
+            const q = query(
+                collection(
+                    db,
+                    `message/${auth.currentUser.uid}/messages/${route.params.id}/actual_message`
+                ),
+                orderBy("createdAt", "asc")
+            );
+            onSnapshot(q, (data) => {
+                let getMessage = [];
+                data.forEach((document) => {
+                    getMessage.push(document.data());
+                    messages.value = [];
                 });
-        },
+                messages.value = getMessage;
+            });
+        };
+
+        const getChatInfo = async () => {
+            const colRef = collection(db, `users`);
+            const q = doc(colRef, `${route.params.id}`);
+
+            onSnapshot(q, (document) => {
+                userInfo.value = document.data();
+            });
+        };
+
+        const submitMessage = async () => {
+            try {
+                if (!/\S/.test(message.value)) {
+                    return;
+                }
+
+                // update other user message
+                const otherUserRef = collection(
+                    db,
+                    `message/${route.params.id}/messages/${currentUser}/actual_message`
+                );
+                await setDoc(doc(otherUserRef), {
+                    createdAt: Timestamp.now(),
+                    text: message.value,
+                    from: auth.currentUser.uid,
+                })
+                    .then(() => {
+                        const colRef = collection(
+                            db,
+                            `message/${route.params.id}/messages`
+                        );
+                        setDoc(doc(colRef, currentUser), {
+                            recent_message: {
+                                createdAt: Timestamp.now(),
+                                from: auth.currentUser.uid,
+                                text: message.value,
+                            },
+                            userRef: doc(db, `users/${currentUser}`),
+                        });
+                    })
+                    .catch((err) => {
+                        throw err;
+                    });
+
+                // update current user message
+                const currentUserRef = collection(
+                    db,
+                    `message/${currentUser}/messages/${route.params.id}/actual_message`
+                );
+                await setDoc(doc(currentUserRef), {
+                    createdAt: Timestamp.now(),
+                    text: message.value,
+                    from: auth.currentUser.uid,
+                })
+                    .then(() => {
+                        const colRef = collection(
+                            db,
+                            `message/${currentUser}/messages`
+                        );
+                        setDoc(doc(colRef, route.params.id), {
+                            recent_message: {
+                                createdAt: Timestamp.now(),
+                                from: auth.currentUser.uid,
+                                text: message.value,
+                            },
+                            userRef: doc(db, `users/${route.params.id}`),
+                        });
+                    })
+                    .catch((err) => {
+                        throw err;
+                    });
+                message.value = "";
+            } catch (error) {
+                console.log(error);
+            }
+        };
+
+        watch(route, () => {
+            getMessages();
+            getChatInfo();
+        });
+
+        return {
+            userInfo,
+            submitMessage,
+            currentUser,
+            message,
+            messages,
+        };
     },
 };
 </script>

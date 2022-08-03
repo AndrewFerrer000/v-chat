@@ -53,9 +53,20 @@
                         class="w-full flex justify-center gap-2 cursor-pointer hover:scale-95 lg:hover:scale-100 transition-all"
                     >
                         <img
-                            src="https://picsum.photos/200/300"
-                            class="rounded-full border-2 border-green-500 p-1 w-12 h-12"
+                            v-if="list.photoURL"
+                            :src="list.photoURL"
+                            class="rounded-full w-12 h-12 border"
                         />
+                        <div
+                            v-else
+                            class="w-12 h-12 relative flex justify-center items-center rounded-full text-xl text-white uppercase border"
+                        >
+                            <span
+                                class="w-full h-full rounded-full grid place-items-center overflow-hidden"
+                                :class="[`bg-green-400`]"
+                                >{{ getInitials(list.display_name) }}</span
+                            >
+                        </div>
                         <div class="hidden w-4/5 lg:block">
                             <p class="font-semibold truncate capitalize">
                                 {{ list.display_name }}
@@ -123,7 +134,35 @@ export default {
                 });
         };
 
-        return { logoutUser, userList };
+        const getInitials = (name) => {
+            let str = name;
+            let getWords = str.split(" ");
+            let getInitials = "";
+            getWords.forEach((word) => {
+                getInitials += word[0];
+            });
+            return getInitials;
+        };
+
+        // const getRandomColor = () => {
+        //     // Tailwind base colors
+        //     let color = [
+        //         "red",
+        //         "green",
+        //         "yellow",
+        //         "orange",
+        //         "blue",
+        //         "rose",
+        //         "pink",
+        //         "emerald",
+        //     ];
+        //     let selectColorByIndex = Math.floor(
+        //         Math.random() * (color.length - 0) + 0
+        //     );
+        //     return color[selectColorByIndex].toString();
+        // };
+
+        return { logoutUser, userList, getInitials };
     },
 };
 </script>
