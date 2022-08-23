@@ -40,14 +40,12 @@
         </div>
 
         <!-- Body -->
-        <div
-            class="h-4/5 p-5 flex flex-col gap-5 overflow-y-auto"
-            ref="messageContainer"
-        >
+        <div class="h-4/5 p-5 flex flex-col gap-5 overflow-y-auto">
             <!-- Actual message -->
             <div
                 class="w-full items-start flex gap-2"
                 v-for="(message, index) in messages"
+                :id="message.id"
                 :key="index"
                 :class="{ 'justify-end': message.from == currentUser }"
             >
@@ -59,14 +57,19 @@
                     }"
                     class="rounded-full w-10 h-10 shadow-md border border-gray-300"
                 />
-                <img
+                <div
                     v-else
-                    src="https://picsum.photos/200/300"
+                    class="w-10 h-10 relative flex justify-center items-center rounded-full text-xl text-white uppercase border"
                     :class="{
-                        'order-2': message.from == currentUser,
+                        'order-1': message.from == currentUser,
                     }"
-                    class="rounded-full w-10 h-10 shadow-md border border-gray-300"
-                />
+                >
+                    <span
+                        class="w-full h-full rounded-full grid place-items-center overflow-hidden"
+                        :class="[`bg-green-400`]"
+                        >VC</span
+                    >
+                </div>
                 <div>
                     <p
                         class="rounded-lg bg-white py-2 px-4 max-w-xs sm:max-w-sm md:max-w-md shadow-md"
@@ -128,11 +131,10 @@ import {
     getDocs,
     doc,
     Timestamp,
-    updateDoc,
-    documentId,
+    where,
 } from "firebase/firestore";
 import { db, auth } from "@/main";
-import { onMounted, watch, ref, watchEffect } from "@vue/runtime-core";
+import { onMounted, watch, ref, watchEffect, toRefs } from "@vue/runtime-core";
 import { useStore } from "vuex";
 import { useRoute } from "vue-router";
 export default {
@@ -142,6 +144,7 @@ export default {
         const messages = ref([]);
         const message = ref("");
         const userInfo = ref({});
+        const userID = ref("");
         const currentUser = auth.currentUser.uid;
 
         onMounted(async () => {
@@ -150,29 +153,34 @@ export default {
         });
 
         const getMessages = () => {
-            const q = query(
-                collection(
-                    db,
-                    `message/${auth.currentUser.uid}/messages/${route.params.id}/actual_message`
-                ),
-                orderBy("createdAt", "asc")
-            );
-            onSnapshot(q, (data) => {
-                let getMessage = [];
-                data.forEach((document) => {
-                    getMessage.push(document.data());
-                    messages.value = [];
-                });
-                messages.value = getMessage;
-            });
+            store.dispatch("getMessages", route.params.id);
         };
 
-        const getChatInfo = async () => {
-            const colRef = collection(db, `users`);
-            const q = doc(colRef, `${route.params.id}`);
+        watchEffect(() => {
+            return (messages.value = store.state.messages);
+        });
 
-            onSnapshot(q, (document) => {
-                userInfo.value = document.data();
+        const getChatInfo = async () => {
+            let getUserID = new Promise((resolve, reject) => {
+                const colRef = collection(db, `channels`);
+                const q = doc(colRef, `${route.params.id}`);
+                onSnapshot(q, (document) => {
+                    resolve(
+                        document
+                            .data()
+                            .members.filter(
+                                (member) => member != currentUser
+                            )[0]
+                    );
+                });
+            });
+
+            getUserID.then((id) => {
+                const colRef = collection(db, `users`);
+                const q = doc(colRef, id);
+                onSnapshot(q, (document) => {
+                    userInfo.value = document.data();
+                });
             });
         };
 
@@ -182,57 +190,29 @@ export default {
                     return;
                 }
 
-                // update other user message
-                const otherUserRef = collection(
+                const msgRef = collection(
                     db,
-                    `message/${route.params.id}/messages/${currentUser}/actual_message`
+                    `msg/${route.params.id}/messages`
                 );
-                await setDoc(doc(otherUserRef), {
-                    createdAt: Timestamp.now(),
-                    text: message.value,
-                    from: auth.currentUser.uid,
-                })
-                    .then(() => {
-                        const colRef = collection(
-                            db,
-                            `message/${route.params.id}/messages`
-                        );
-                        setDoc(doc(colRef, currentUser), {
-                            recent_message: {
-                                createdAt: Timestamp.now(),
-                                from: auth.currentUser.uid,
-                                text: message.value,
-                            },
-                            userRef: doc(db, `users/${currentUser}`),
-                        });
-                    })
-                    .catch((err) => {
-                        throw err;
-                    });
 
-                // update current user message
-                const currentUserRef = collection(
-                    db,
-                    `message/${currentUser}/messages/${route.params.id}/actual_message`
-                );
-                await setDoc(doc(currentUserRef), {
+                await setDoc(doc(msgRef), {
                     createdAt: Timestamp.now(),
                     text: message.value,
                     from: auth.currentUser.uid,
                 })
                     .then(() => {
-                        const colRef = collection(
-                            db,
-                            `message/${currentUser}/messages`
-                        );
-                        setDoc(doc(colRef, route.params.id), {
-                            recent_message: {
-                                createdAt: Timestamp.now(),
-                                from: auth.currentUser.uid,
-                                text: message.value,
+                        const docRef = doc(db, `channels`, route.params.id);
+                        setDoc(
+                            docRef,
+                            {
+                                recent_message: {
+                                    createdAt: Timestamp.now(),
+                                    from: auth.currentUser.uid,
+                                    text: message.value,
+                                },
                             },
-                            userRef: doc(db, `users/${route.params.id}`),
-                        });
+                            { merge: true }
+                        );
                     })
                     .catch((err) => {
                         throw err;

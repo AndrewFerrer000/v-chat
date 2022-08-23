@@ -32,43 +32,75 @@ export default createStore({
         async getUserlist(context) {
             let list = [];
             const q = query(
-                collection(db, `message/${auth.currentUser.uid}/messages`),
+                collection(db, `channels`),
+                where("members", "array-contains", auth.currentUser.uid),
                 orderBy("recent_message.createdAt", "desc")
             );
+
             onSnapshot(q, (data) => {
                 let temp = [];
+
                 const finalList = async () => {
                     for (const document of data.docs) {
-                        let getUserRef = await getDoc(document.data().userRef);
+                        let getUserDetails = {};
+                        for (const member of document.data().members) {
+                            if (member != auth.currentUser.uid) {
+                                let userRef = doc(db, "users", member);
+                                let getUserRef = await getDoc(userRef);
+                                getUserDetails = getUserRef.data();
+                            }
+                        }
                         temp.push({
                             createdAt: document.data().recent_message.createdAt,
                             text: document.data().recent_message.text,
                             chatLink: document.id,
-                            display_name: getUserRef.data().display_name,
-                            photoURL: getUserRef.data().photoURL,
+                            display_name: getUserDetails.display_name,
+                            photoURL: getUserDetails.photoURL,
                         });
                         list = temp;
                     }
                     return list;
                 };
-                finalList().then((res) => {
-                    context.commit("SET_USERLIST", res);
+                finalList().then((result) => {
+                    context.commit("SET_USERLIST", result);
                 });
             });
+            // let list = [];
+            // const q = query(
+            //     collection(db, `message/${auth.currentUser.uid}/messages`),
+            //     orderBy("recent_message.createdAt", "desc")
+            // );
+            // onSnapshot(q, (data) => {
+            //     let temp = [];
+            //     const finalList = async () => {
+            //         for (const document of data.docs) {
+            //             let getUserRef = await getDoc(document.data().userRef);
+            //             temp.push({
+            //                 createdAt: document.data().recent_message.createdAt,
+            //                 text: document.data().recent_message.text,
+            //                 chatLink: document.id,
+            //                 display_name: getUserRef.data().display_name,
+            //                 photoURL: getUserRef.data().photoURL,
+            //             });
+            //             list = temp;
+            //         }
+            //         return list;
+            //     };
+            //     finalList().then((res) => {
+            //         context.commit("SET_USERLIST", res);
+            //     });
+            // });
         },
 
         async getMessages(context, payload) {
             const q = query(
-                collection(
-                    db,
-                    `message/${auth.currentUser.uid}/messages/${payload}/actual_message`
-                ),
+                collection(db, `msg/${payload}/messages`),
                 orderBy("createdAt", "asc")
             );
             onSnapshot(q, (data) => {
-                let getMessage = [];
+                const getMessage = [];
                 data.forEach((document) => {
-                    getMessage.push(document.data());
+                    getMessage.push({ ...document.data(), id: document.id });
                 });
                 context.commit("SET_MESSAGES", getMessage);
             });

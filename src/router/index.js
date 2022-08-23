@@ -24,6 +24,7 @@ const routes = [
                 path: `/message/:id`,
                 name: "message",
                 component: Message,
+                props: true,
             },
             // check params.id if empty set to space string
             {

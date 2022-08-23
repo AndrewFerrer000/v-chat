@@ -144,24 +144,6 @@ export default {
             return getInitials;
         };
 
-        // const getRandomColor = () => {
-        //     // Tailwind base colors
-        //     let color = [
-        //         "red",
-        //         "green",
-        //         "yellow",
-        //         "orange",
-        //         "blue",
-        //         "rose",
-        //         "pink",
-        //         "emerald",
-        //     ];
-        //     let selectColorByIndex = Math.floor(
-        //         Math.random() * (color.length - 0) + 0
-        //     );
-        //     return color[selectColorByIndex].toString();
-        // };
-
         return { logoutUser, userList, getInitials };
     },
 };
